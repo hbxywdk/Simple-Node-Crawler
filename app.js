@@ -5,7 +5,8 @@ var request =  require("request");
 
 const setting = {
 	'domain': 'http://www.w3cplus.com',
-	'link':'/canvas/drawing-regular-polygons.html'
+	'link':'/canvas/drawing-regular-polygons.html',
+	'timeOut':3000
 }
 function getPageNum(link) {
     var html = ""
@@ -28,10 +29,16 @@ function getPageNum(link) {
             // 有上一篇文章
             // 
             if ( !!prevLink ) {
-            	//三秒后继续
+            	// 记录进度
+                fs.writeFile('./jingdu.txt', prevLink + '\r\n', 'utf-8', function (err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                });
+            	//xxx秒后继续
             	setTimeout(() => {
             		getPageNum(prevLink)
-            	},5000)
+            	},setting.timeOut)
             }else{
             	console.log('木有了');
             }
@@ -43,6 +50,7 @@ function getPageNum(link) {
 }
 // 储存文章内容
 function saveContent($, pageTitle) {
+
 	console.log('开始写入' + pageTitle)
 	// 创建文件夹 路径 读写权限 cb
 	fs.mkdir('./data/'+ pageTitle, 0777, function(err){
@@ -80,6 +88,13 @@ function saveContent($, pageTitle) {
 		                console.log(' 图片请求错误 '+err);
 		            }else{
 						request(imgSrc)
+			            .on('error', function(err) {
+			                console.log('request 出错'+err);
+			                setting.link = readGoOn();
+			                // 出错重启
+			                getPageNum(setting.link);
+			                return;
+			            })
 						.pipe(
 							// 创建流
 							fs.createWriteStream('./data/' + pageTitle + '/' + imgName)
@@ -92,7 +107,16 @@ function saveContent($, pageTitle) {
 	})
 
 }
-
+// 出错中断 读取最近一次url
+function readGoOn(){
+    fs.readFile('./jingdu.txt', 'utf-8', function(err, data) {   
+        if (err) {  
+            throw err;  
+        }  
+        // console.log('utf-8: ', data.toString()); 
+        return data.toString();
+    });  
+}
 getPageNum(setting.link)
 
 
